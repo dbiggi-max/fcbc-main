@@ -168,8 +168,29 @@ model DailyTheme {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   themeSubmissions ThemeSubmission[]
+  activations      DailyThemeActivation[]
+
+  scheduledForDateKey String?
+  source              String                 @default("ADMIN") // "ADMIN" | "AI_FALLBACK"
+  generatedByModel    String?
+  generationPrompt    String?
+  generationMetadata  Json?
 
   @@index([themeDate])
+  @@index([scheduledForDateKey])
+}
+
+model DailyThemeActivation {
+  id            String     @id @default(cuid())
+  dateKey       String     @unique // "YYYY-MM-DD" formatted in Asia/Tokyo
+  dailyThemeId  String
+  dailyTheme    DailyTheme @relation(fields: [dailyThemeId], references: [id], onDelete: Cascade)
+  source        String     // "ADMIN" | "AI_FALLBACK"
+  activatedAt   DateTime   @default(now())
+  triggerSource String     // "CRON" | "MANUAL"
+  auditMetadata Json?
+
+  @@index([dailyThemeId])
 }
 
 model ThemeSubmission {

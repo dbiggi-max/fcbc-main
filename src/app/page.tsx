@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import TodaysChallengeSection from "@/components/daily-theme/TodaysChallengeSection";
 
 export default function HomePage() {
   return (
@@ -51,6 +52,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Today's Active Drawing Challenge */}
+      <TodaysChallengeSection />
 
       {/* 2. Four-Step "Prototype Flow" Section */}
       <section className="py-16 px-6 md:px-8 max-w-5xl mx-auto space-y-12">

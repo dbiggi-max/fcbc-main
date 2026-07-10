@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import DailyThemeInterface from "@/components/DailyThemeInterface";
 import { DailyTheme, ThemeSubmission } from "@prisma/client";
 import { getTodayDateRange } from "@/lib/dates";
+import { getJapanDateKey } from "@/lib/daily-theme/date";
 
 import { auth } from "@/lib/auth";
 
@@ -23,38 +24,71 @@ export default async function DailyThemePage() {
     const session = await auth();
     const currentUserId = session?.user?.id || "anonymous-no-submissions";
 
-    const { startOfToday, startOfTomorrow } = getTodayDateRange();
-
-    // 1. Query today's active DailyTheme from Prisma, including related submissions and artists
-    activeTheme = await prisma.dailyTheme.findFirst({
-      where: {
-        status: "active",
-        themeDate: {
-          gte: startOfToday,
-          lt: startOfTomorrow,
-        },
-      },
+    // 1. Query today's active DailyTheme from Prisma, looking at DailyThemeActivation first (Japan Time)
+    const todayKey = getJapanDateKey();
+    const activation = await prisma.dailyThemeActivation.findUnique({
+      where: { dateKey: todayKey },
       include: {
-        themeSubmissions: {
-          where: {
-            userId: currentUserId,
-            deletedAt: null, // Filter out soft-deleted submissions
-          },
+        dailyTheme: {
           include: {
-            artist: {
-              select: {
-                id: true,
-                displayName: true,
-                slug: true,
+            themeSubmissions: {
+              where: {
+                userId: currentUserId,
+                deletedAt: null,
+              },
+              include: {
+                artist: {
+                  select: {
+                    id: true,
+                    displayName: true,
+                    slug: true,
+                  },
+                },
+              },
+              orderBy: {
+                createdAt: "desc",
               },
             },
-          },
-          orderBy: {
-            createdAt: "desc",
           },
         },
       },
     });
+
+    if (activation) {
+      activeTheme = activation.dailyTheme as any;
+    } else {
+      // Resilient fallback to legacy machine time lookup
+      const { startOfToday, startOfTomorrow } = getTodayDateRange();
+      activeTheme = await prisma.dailyTheme.findFirst({
+        where: {
+          status: "active",
+          themeDate: {
+            gte: startOfToday,
+            lt: startOfTomorrow,
+          },
+        },
+        include: {
+          themeSubmissions: {
+            where: {
+              userId: currentUserId,
+              deletedAt: null, // Filter out soft-deleted submissions
+            },
+            include: {
+              artist: {
+                select: {
+                  id: true,
+                  displayName: true,
+                  slug: true,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+          },
+        },
+      });
+    }
 
     // 2. Query all onboarded artists to populate optional dropdown linkage
     artists = await prisma.artist.findMany({
