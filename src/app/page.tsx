@@ -2,6 +2,8 @@ import React from "react";
 import Link from "next/link";
 import TodaysChallengeSection from "@/components/daily-theme/TodaysChallengeSection";
 
+export const dynamic = "force-dynamic";
+
 export default function HomePage() {
   return (
     <div className="bg-slate-50 min-h-screen text-slate-900 flex flex-col justify-between">
