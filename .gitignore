@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +40,25 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# datasets & models
+data/artists/**/raw/*
+data/artists/**/processed/*
+!data/artists/**/raw/.gitkeep
+!data/artists/**/processed/.gitkeep
+!data/artists/**/manifest.json
+models/adapters/*.safetensors
+
+# prototype uploads
+/public/uploads/**/*.jpg
+/public/uploads/**/*.jpeg
+/public/uploads/**/*.png
+/public/uploads/**/*.webp
+!/public/uploads/**/.gitkeep
+
+# python virtual environments
+.venv/
+venv/
+__pycache__/
+*.pyc
+

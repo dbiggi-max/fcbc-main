@@ -1,0 +1,365 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Artist {
+  id                      String                   @id @default(cuid())
+  displayName             String
+  slug                    String                   @unique
+  type                    String
+  bio                     String?
+  status                  String                   @default("active")
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  licenseRecords          ConsentOrLicenseRecord[]
+  datasetVersions         DatasetVersion[]
+  datasetImages           DatasetImage[]
+  modelAdapters           ModelAdapter[]
+  generationRequests      GenerationRequest[]
+  royaltyEvents           RoyaltyEvent[]
+  themeSubmissions        ThemeSubmission[]
+
+  userId                  String?                  @unique
+  user                    User?                    @relation("UserArtistProfile", fields: [userId], references: [id])
+  verificationStatus      String                   @default("PENDING") // "PENDING" | "APPROVED" | "REJECTED"
+  verificationRequestedAt DateTime?
+  verifiedAt              DateTime?
+  verifiedByAdminId       String?
+  portfolioUrl            String?
+  externalProfileUrl      String?
+}
+
+
+model ConsentOrLicenseRecord {
+  id                  String         @id @default(cuid())
+  artistId            String
+  recordType          String
+  rightsBasis         String
+  sourceName          String?
+  sourceUrl           String?
+  commercialAllowed   Boolean        @default(false)
+  trainingAllowed     Boolean        @default(false)
+  attributionRequired Boolean        @default(true)
+  notes               String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  artist              Artist         @relation(fields: [artistId], references: [id])
+  datasetImages       DatasetImage[]
+}
+
+model DatasetVersion {
+  id                 String              @id @default(cuid())
+  artistId           String
+  versionName        String
+  status             String              @default("draft")
+  imageCount         Int                 @default(0)
+  storagePath        String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  artist             Artist              @relation(fields: [artistId], references: [id])
+  images             DatasetImage[]
+  modelAdapters      ModelAdapter[]
+  generationRequests GenerationRequest[]
+
+  @@index([artistId])
+}
+
+model DatasetImage {
+  id               String                  @id @default(cuid())
+  datasetVersionId String
+  artistId         String
+  filename         String
+  storagePath      String
+  sourceUrl        String?
+  licenseRecordId  String?
+  caption          String?
+  width            Int?
+  height           Int?
+  sha256Hash       String?
+  qualityStatus    String                  @default("pending")
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  datasetVersion   DatasetVersion          @relation(fields: [datasetVersionId], references: [id])
+  artist           Artist                  @relation(fields: [artistId], references: [id])
+  licenseRecord    ConsentOrLicenseRecord? @relation(fields: [licenseRecordId], references: [id])
+
+  @@index([artistId])
+  @@index([datasetVersionId])
+}
+
+model ModelAdapter {
+  id                  String              @id @default(cuid())
+  artistId            String
+  datasetVersionId    String?
+  adapterName         String
+  baseModel           String
+  adapterType         String              @default("lora")
+  filePath            String?
+  triggerToken        String?
+  status              String              @default("registered")
+  trainingNotebookUrl String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  artist              Artist              @relation(fields: [artistId], references: [id])
+  datasetVersion      DatasetVersion?     @relation(fields: [datasetVersionId], references: [id])
+  generationRequests  GenerationRequest[]
+
+  @@index([artistId])
+}
+
+model GenerationRequest {
+  id               String          @id @default(cuid())
+  userId           String?
+  artistId         String
+  modelAdapterId   String?
+  datasetVersionId String?
+  prompt           String
+  negativePrompt   String?
+  seed             Int?
+  parametersJson   Json?
+  status           String          @default("queued")
+  outputImagePath  String?
+  errorMessage     String?
+  createdAt        DateTime        @default(now())
+  completedAt      DateTime?
+  artist           Artist          @relation(fields: [artistId], references: [id])
+  modelAdapter     ModelAdapter?   @relation(fields: [modelAdapterId], references: [id])
+  datasetVersion   DatasetVersion? @relation(fields: [datasetVersionId], references: [id])
+  royaltyEvent     RoyaltyEvent?
+
+  @@index([artistId])
+  @@index([status])
+}
+
+model RoyaltyEvent {
+  id                  String            @id @default(cuid())
+  generationRequestId String            @unique
+  artistId            String
+  amountCents         Int
+  currency            String            @default("JPY")
+  status              String            @default("simulated")
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  generationRequest   GenerationRequest @relation(fields: [generationRequestId], references: [id])
+  artist              Artist            @relation(fields: [artistId], references: [id])
+
+  @@index([artistId])
+}
+
+model DailyTheme {
+  id               String            @id @default(cuid())
+  themeText        String
+  themeDate        DateTime
+  description      String?
+  status           String            @default("active")
+  positivePrompts  Json?
+  negativePrompts  Json?
+  acceptThreshold  Float?
+  reviewThreshold  Float?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  themeSubmissions ThemeSubmission[]
+
+  @@index([themeDate])
+}
+
+model ThemeSubmission {
+  id                  String     @id @default(cuid())
+  dailyThemeId        String
+  userId              String?
+  artistId            String?
+  imagePath           String
+  promptOrCaption     String?
+  clipSimilarityScore   Float?
+  validationStatus      String     @default("pending")
+  validationExplanation String?
+  savedToDataset        Boolean    @default(false)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  dailyTheme          DailyTheme @relation(fields: [dailyThemeId], references: [id])
+  artist              Artist?    @relation(fields: [artistId], references: [id])
+  user                User?      @relation(fields: [userId], references: [id])
+
+  // Granular Validation & Override Metadata
+  originalStatus        String?    // Status assigned by AI ("accepted", "rejected", "borderline")
+  effectiveStatus       String?    // Status reflecting overrides ("accepted", "rejected", "borderline")
+  finalScore            Float?     // Weighted raw ensemble score
+  positiveScore         Float?     // Average positive-prompt similarity
+  negativeScore         Float?     // Strongest confusion-prompt similarity
+  marginScore           Float?     // Margin (positive - negative)
+  captionThemeScore     Float?     // Generated-caption/theme similarity
+  backgroundZScore      Float?     // Similarity normalized against unrelated prompts
+  generatedCaption      String?    // Caption produced from the image by a model
+  thresholdUsed         Float?     // Decision boundary applied to this submission
+  visionScore           Float?     // Score assigned by Gemini Vision fallback (0-1)
+  confidence            String?    // "high" | "medium" | "low"
+  detectedConcepts      String?    // Comma-separated or JSON list of keywords detected
+  interpretationType    String?    // "literal" | "symbolic" | "abstract" | "emotional" | "unclear"
+  validationMetadata    Json?      // OpenCLIP version, Gemini model, pipeline & threshold metadata
+  
+  overriddenByAdmin     Boolean    @default(false)
+  adminOverrideStatus   String?    // Admin status override ("accepted", "rejected")
+  adminOverrideReason   String?    // Optional override explanation
+  adminOverrideAt       DateTime?
+  adminOverrideBy       String?
+
+  // Separate Explicit Dataset Approvals
+  datasetApprovalStatus String     @default("not_approved") // "not_approved" | "approved" | "removed"
+  datasetApprovedAt     DateTime?
+  datasetApprovedBy     String?
+  datasetRemovedAt      DateTime?
+  datasetRemovedBy      String?
+  datasetApprovalReason String?
+  datasetRemovalReason  String?
+
+  // 30-Day Retention Tracking
+  retentionUntil        DateTime?  // Set to 30 days from creation/override for rejected/borderline
+
+  // Soft deletion tracking
+  deletedAt             DateTime?
+  deletedByUserId       String?
+  recoveryUntil         DateTime?
+  cleanupStatus         String?    @default("active") // "active" | "queued_for_purge"
+
+  validationAttempts    ThemeValidationAttempt[]
+
+  @@index([dailyThemeId])
+  @@index([validationStatus])
+  @@index([effectiveStatus])
+  @@index([datasetApprovalStatus])
+  @@index([userId])
+}
+
+model ThemeValidationAttempt {
+  id                 String          @id @default(cuid())
+  submissionId       String
+  triggerSource      String          // "INITIAL_SUBMISSION" | "ADMIN_REVALIDATION" | "THRESHOLD_CHANGE" | "MODEL_UPDATE"
+  provider           String          // "mock" | "google_gemini"
+  decision           String          // "APPROVED" | "NEEDS_REVIEW" | "REJECTED" | "SPAM"
+  themeMatchScore    Int
+  qualityScore       Int
+  simplicityScore    Int
+  effortScore        Int
+  spamScore          Int
+  isLowEffort        Boolean
+  isOffTheme         Boolean
+  isObviousSpam      Boolean
+  rejectionCodes     String[]        // Array of strings in Postgres
+  modelName          String
+  modelVersion       String
+  rawResponseId      String?
+  rawResponseJson    Json            // JSON representation of raw model response
+  thresholdSnapshot  Json            // JSON representation of used threshold configuration
+  createdAt          DateTime        @default(now())
+
+  submission         ThemeSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@index([createdAt])
+}
+
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorId      String?
+  action       String
+  entityType   String
+  entityId     String?
+  metadataJson Json?
+  createdAt    DateTime @default(now())
+
+  @@index([entityType])
+  @@index([action])
+}
+
+model ValidationSettings {
+  id              String   @id @default("global")
+  provider        String   @default("mock") // "mock" | "openclip" | "remote"
+  modelName       String   @default("ViT-B-32")
+  pretrainedName  String   @default("laion2b_s34b_b79k")
+  promptStrategy  String   @default("hybrid_similarity") // "standard" | "descriptive" | "metaphorical" | "hybrid"
+  rawMin          Float    @default(0.15)
+  rawMax          Float    @default(0.35)
+  acceptThreshold Float    @default(0.45)
+  rejectThreshold Float    @default(0.45)
+  updatedAt       DateTime @updatedAt
+}
+
+enum Role {
+  USER
+  ARTIST
+  ADMIN
+}
+
+model User {
+  id               String            @id @default(cuid())
+  name             String?
+  email            String?           @unique
+  emailVerified    DateTime?
+  image            String?
+  role             Role              @default(USER)
+  accounts         Account[]
+  sessions         Session[]
+  themeSubmissions ThemeSubmission[]
+  artistProfile    Artist?           @relation("UserArtistProfile")
+  notifications    Notification[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String? @db.Text
+  access_token       String? @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String? @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  id         String   @id @default(cuid())
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Notification {
+  id                  String    @id @default(cuid())
+  userId              String
+  type                String    // e.g. "SUBMISSION_STATUS" | "ROYALTY_EARNED" | "ARTIST_VERIFIED"
+  title               String
+  message             String
+  relatedSubmissionId String?
+  readAt              DateTime?
+  createdAt           DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+

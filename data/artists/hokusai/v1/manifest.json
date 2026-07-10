@@ -1,0 +1,17 @@
+[
+  {
+    "artistSlug": "hokusai",
+    "version": "v1",
+    "filename": "hokusai_great_wave_test.png",
+    "rawPath": "data/artists/hokusai/v1/raw/hokusai_great_wave_test.png",
+    "captionPath": "data/artists/hokusai/v1/captions/hokusai_great_wave_test.txt",
+    "caption": "A Katsushika Hokusai style woodblock print representing giant blue and white waves crushing ships in front of Mount Fuji.",
+    "sha256Hash": "cdeb4dbbacbd2245634a8becf726e9506929b9e1dc27b7bf8dc08ec6316a3253",
+    "sourceUrl": null,
+    "sourceName": null,
+    "rightsBasis": "public_domain_or_open_access_to_be_verified",
+    "licenseNotes": "Prototype placeholder. Replace with verified museum/open-access source records before production fine-tuning.",
+    "width": 1024,
+    "height": 1024
+  }
+]
