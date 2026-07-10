@@ -5,10 +5,12 @@ const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
 };
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString =
+  process.env.DATABASE_URL ||
+  "postgresql://postgres:postgres@localhost:5432/creator_style_lab?schema=public";
 
-if (!connectionString) {
-  throw new Error("DATABASE_URL is required to initialize Prisma Client.");
+if (!process.env.DATABASE_URL) {
+  console.warn("⚠️ DATABASE_URL is not set. Falling back to development database URL for compilation.");
 }
 
 const adapter = new PrismaPg({ connectionString });
