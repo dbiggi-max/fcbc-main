@@ -1,23 +1,19 @@
 import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
+import { authConfig } from "./auth.config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: PrismaAdapter(prisma),
-  providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID || "mock-google-client-id",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "mock-google-client-secret",
-    }),
-  ],
   callbacks: {
+    ...authConfig.callbacks,
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role || "USER";
       } else {
-        // Hydrate from DB to ensure session stays in sync with role updates
+        // Hydrate from DB to ensure session stays in sync with role updates (Node runtime only)
         const dbUser = await prisma.user.findUnique({
           where: { id: token.sub || token.id as string },
           select: { role: true },
@@ -27,13 +23,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
       }
       return token;
-    },
-    async session({ session, token }) {
-      if (session.user && token) {
-        session.user.id = (token.sub || token.id) as string;
-        session.user.role = (token.role || "USER") as "USER" | "ARTIST" | "ADMIN";
-      }
-      return session;
     },
     async signIn({ user }) {
       if (user && user.email) {
@@ -69,8 +58,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return true;
     },
   },
-  session: {
-    strategy: "jwt",
-  },
-  secret: process.env.AUTH_SECRET || "fcbc-core-super-secret-passphrase-at-least-32-chars",
 });

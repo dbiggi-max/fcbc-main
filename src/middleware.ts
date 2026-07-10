@@ -1,18 +1,17 @@
-import { auth } from "@/lib/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "@/lib/auth.config";
 import { NextResponse } from "next/server";
+
+const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isAuth = !!req.auth;
-  const role = req.auth?.user?.role;
 
-  // 1. Protect all /admin routes except /admin/login
+  // 1. Protect all /admin routes (unauthenticated redirects to admin login)
   if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
-    if (!isAuth || role !== "ADMIN") {
+    if (!isAuth) {
       const loginUrl = new URL("/admin/login", req.url);
-      if (isAuth) {
-        loginUrl.searchParams.set("error", "AccessDeniedAdminRequired");
-      }
       return NextResponse.redirect(loginUrl);
     }
   }
@@ -32,10 +31,6 @@ export default auth((req) => {
       const signinUrl = new URL("/api/auth/signin", req.url);
       signinUrl.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(signinUrl);
-    }
-    if (role !== "ARTIST" && role !== "ADMIN") {
-      const registerUrl = new URL("/artist/register", req.url);
-      return NextResponse.redirect(registerUrl);
     }
   }
 
