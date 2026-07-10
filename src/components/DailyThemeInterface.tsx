@@ -113,28 +113,39 @@ export default function DailyThemeInterface({
   useEffect(() => {
     if (!tldrawEditor || !isMounted) return;
 
-    // Restore canvas shapes
-    const savedCanvas = localStorage.getItem("fcbc_tldraw_draft");
-    if (savedCanvas) {
-      try {
-        const snapshot = JSON.parse(savedCanvas);
-        tldrawEditor.store.loadSnapshot(snapshot);
-      } catch (err) {
-        console.error("Failed to restore Tldraw draft snapshot:", err);
-      }
-    }
+    let isCancelled = false;
+    let cleanup: (() => void) | undefined;
 
-    // Auto-save on canvas changes
-    const cleanup = tldrawEditor.store.listen(() => {
-      try {
-        const snapshot = tldrawEditor.store.getSnapshot();
-        localStorage.setItem("fcbc_tldraw_draft", JSON.stringify(snapshot));
-      } catch (err) {
-        console.error("Failed to save Tldraw draft snapshot:", err);
+    // Dynamically import tldraw utilities to avoid server-side canvas exceptions
+    import("tldraw").then(({ getSnapshot, loadSnapshot }) => {
+      if (isCancelled) return;
+
+      // Restore canvas shapes
+      const savedCanvas = localStorage.getItem("fcbc_tldraw_draft");
+      if (savedCanvas) {
+        try {
+          const snapshot = JSON.parse(savedCanvas);
+          loadSnapshot(tldrawEditor.store, snapshot);
+        } catch (err) {
+          console.error("Failed to restore Tldraw draft snapshot:", err);
+        }
       }
+
+      // Auto-save on canvas changes
+      cleanup = tldrawEditor.store.listen(() => {
+        try {
+          const snapshot = getSnapshot(tldrawEditor.store);
+          localStorage.setItem("fcbc_tldraw_draft", JSON.stringify(snapshot));
+        } catch (err) {
+          console.error("Failed to save Tldraw draft snapshot:", err);
+        }
+      });
     });
 
-    return () => cleanup();
+    return () => {
+      isCancelled = true;
+      if (cleanup) cleanup();
+    };
   }, [tldrawEditor, isMounted]);
 
   // UX & Async Ingestion States
@@ -230,7 +241,8 @@ export default function DailyThemeInterface({
       localStorage.setItem("fcbc_draft_tab", activeTab);
       if (activeTab === "draw" && tldrawEditor) {
         try {
-          const snapshot = tldrawEditor.store.getSnapshot();
+          const { getSnapshot } = await import("tldraw");
+          const snapshot = getSnapshot(tldrawEditor.store);
           localStorage.setItem("fcbc_tldraw_draft", JSON.stringify(snapshot));
         } catch (err) {
           console.error("Draft save failed on auth redirect:", err);
