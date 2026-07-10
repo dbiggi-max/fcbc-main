@@ -9,6 +9,7 @@ export const mainNavItems = [
   { title: "Home", href: "/" },
   { title: "Generate", href: "/generate" },
   { title: "Gallery", href: "/gallery" },
+  { title: "Sketches", href: "/gallery/submissions" },
   { title: "Daily Theme", href: "/daily-theme" },
   { title: "Admin", href: "/admin" },
 ] as const;
@@ -21,6 +22,8 @@ export const adminNavItems = [
   { title: "Generations", href: "/admin/generations" },
   { title: "Royalties", href: "/admin/royalties" },
   { title: "Daily Themes", href: "/admin/daily-theme" },
+  { title: "Submissions Moderation", href: "/admin/moderation" },
+  { title: "Validation Settings", href: "/admin/settings/validation" },
   { title: "Audit Logs", href: "/admin/audit-logs" },
 ] as const;
 

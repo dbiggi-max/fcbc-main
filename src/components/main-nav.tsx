@@ -38,6 +38,12 @@ export function MainNav() {
             Gallery
           </Link>
           <Link
+            href="/gallery/submissions"
+            className="rounded-md px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950"
+          >
+            Sketches
+          </Link>
+          <Link
             href="/daily-theme"
             className="rounded-md px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950"
           >

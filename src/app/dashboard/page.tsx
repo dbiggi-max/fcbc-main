@@ -26,7 +26,31 @@ export default async function DashboardPage() {
     },
   });
 
-  // 3. Compute simple overview metrics
+  // 3. Query user's unread notifications
+  const notifications = await prisma.notification.findMany({
+    where: {
+      userId: user.id,
+      readAt: null,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  // 4. Inline server action to mark notifications as read
+  async function handleDismissNotification(formData: FormData) {
+    "use server";
+    const notificationId = formData.get("notificationId") as string;
+    if (notificationId) {
+      await prisma.notification.update({
+        where: { id: notificationId },
+        data: { readAt: new Date() },
+      });
+      revalidatePath("/dashboard");
+    }
+  }
+
+  // 5. Compute simple overview metrics
   const totalCount = submissions.length;
   const acceptedCount = submissions.filter((s) => s.effectiveStatus === "accepted" || s.validationStatus === "accepted").length;
   const pendingCount = submissions.filter((s) => s.effectiveStatus === "pending" || s.validationStatus === "pending").length;
@@ -77,6 +101,31 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Unread Notifications Panel */}
+      {notifications.length > 0 && (
+        <div className="space-y-3 bg-indigo-50/50 border border-indigo-100 p-4 rounded-xl shadow-sm">
+          <h2 className="text-xs font-bold text-indigo-950 uppercase tracking-wider flex items-center gap-2">
+            🔔 Unread Notifications ({notifications.length})
+          </h2>
+          <div className="space-y-2">
+            {notifications.map((notification) => (
+              <div key={notification.id} className="flex justify-between items-start gap-4 bg-white border border-indigo-100/60 p-3 rounded-lg text-xs text-indigo-950">
+                <div>
+                  <p className="font-bold">{notification.title}</p>
+                  <p className="text-slate-600 mt-0.5">{notification.message}</p>
+                </div>
+                <form action={handleDismissNotification}>
+                  <input type="hidden" name="notificationId" value={notification.id} />
+                  <button type="submit" className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 border border-indigo-100 rounded px-2.5 py-1 cursor-pointer transition">
+                    Dismiss
+                  </button>
+                </form>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Metrics Row */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-4">
@@ -174,26 +223,40 @@ export default async function DashboardPage() {
                       </td>
 
                       {/* Validation Badges */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {isAccepted && (
-                          <span className="inline-flex items-center rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 ring-1 ring-inset ring-emerald-600/10">
-                            Approved
-                          </span>
-                        )}
-                        {isRejected && (
-                          <span className="inline-flex items-center rounded-md bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700 ring-1 ring-inset ring-rose-600/10">
-                            Unsuitable
-                          </span>
-                        )}
-                        {isBorderline && (
-                          <span className="inline-flex items-center rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 ring-1 ring-inset ring-indigo-600/10">
-                            Borderline Review
-                          </span>
-                        )}
-                        {status === "pending" && (
-                          <span className="inline-flex items-center rounded-md bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-500 ring-1 ring-inset ring-slate-600/10 animate-pulse">
-                            Processing
-                          </span>
+                      <td className="px-6 py-4 whitespace-nowrap space-y-1.5">
+                        <div>
+                          {isAccepted && (
+                            <span className="inline-flex items-center rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 ring-1 ring-inset ring-emerald-600/10">
+                              Approved
+                            </span>
+                          )}
+                          {isRejected && (
+                            <span className="inline-flex items-center rounded-md bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700 ring-1 ring-inset ring-rose-600/10">
+                              Not selected for publication
+                            </span>
+                          )}
+                          {isBorderline && (
+                            <span className="inline-flex items-center rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 ring-1 ring-inset ring-indigo-600/10">
+                              Borderline Review
+                            </span>
+                          )}
+                          {status === "pending" && (
+                            <span className="inline-flex items-center rounded-md bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-500 ring-1 ring-inset ring-slate-600/10 animate-pulse">
+                              Processing
+                            </span>
+                          )}
+                          {status === "spam" && (
+                            <span className="inline-flex items-center rounded-md bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700 ring-1 ring-inset ring-rose-600/10">
+                              Not selected for publication
+                            </span>
+                          )}
+                        </div>
+                        {sub.isPublishedToGallery && (
+                          <div>
+                            <span className="inline-flex items-center rounded-md bg-sky-50 px-2.5 py-0.5 text-[10px] font-bold text-sky-700 ring-1 ring-inset ring-sky-600/10">
+                              🏛️ Published in Gallery
+                            </span>
+                          </div>
                         )}
                       </td>
 

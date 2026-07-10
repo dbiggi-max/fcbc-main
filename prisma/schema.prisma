@@ -160,6 +160,11 @@ model DailyTheme {
   negativePrompts  Json?
   acceptThreshold  Float?
   reviewThreshold  Float?
+  minThemeMatchScore  Int?
+  minQualityScore     Int?
+  minEffortScore      Int?
+  maxSpamScore        Int?
+  maxSimplicityScore  Int?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   themeSubmissions ThemeSubmission[]
@@ -225,6 +230,13 @@ model ThemeSubmission {
   recoveryUntil         DateTime?
   cleanupStatus         String?    @default("active") // "active" | "queued_for_purge"
 
+  // Gallery publishing fields
+  isPublishedToGallery Boolean   @default(false)
+  publishedAt          DateTime?
+  publishedByAdminId   String?
+  unpublishedAt        DateTime?
+  galleryVisibility    String    @default("private") // "public" | "private"
+
   validationAttempts    ThemeValidationAttempt[]
 
   @@index([dailyThemeId])
@@ -286,6 +298,11 @@ model ValidationSettings {
   rawMax          Float    @default(0.35)
   acceptThreshold Float    @default(0.45)
   rejectThreshold Float    @default(0.45)
+  minThemeMatchScore  Int      @default(75)
+  minQualityScore     Int      @default(50)
+  minEffortScore      Int      @default(40)
+  maxSpamScore        Int      @default(30)
+  maxSimplicityScore  Int      @default(60)
   updatedAt       DateTime @updatedAt
 }
 

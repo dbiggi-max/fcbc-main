@@ -43,21 +43,18 @@ export async function validateThemeSubmissionWorkflow(
   const providerName = (settings?.provider || process.env.THEME_VALIDATOR_PROVIDER || "mock").trim().toLowerCase();
   const modelName = (settings?.modelName || process.env.GEMINI_VALIDATION_MODEL || "gemini-2.5-flash").trim();
 
-  // Resolve active thresholds based on settings, falling back to schema fields if available, otherwise defaults
+  // Resolve active thresholds based on settings, custom theme overrides, and defaults
   const thresholds: ValidationThresholds = {
-    minThemeMatch: dailyTheme.acceptThreshold ? Math.round(dailyTheme.acceptThreshold * 100) : (settings?.acceptThreshold ? Math.round(settings.acceptThreshold * 100) : DEFAULT_THRESHOLDS.minThemeMatch),
-    minQuality: DEFAULT_THRESHOLDS.minQuality,
-    minEffort: DEFAULT_THRESHOLDS.minEffort,
-    maxSimplicity: DEFAULT_THRESHOLDS.maxSimplicity,
-    maxSpam: DEFAULT_THRESHOLDS.maxSpam,
+    minThemeMatch: dailyTheme.minThemeMatchScore ?? 
+                   (dailyTheme.acceptThreshold ? Math.round(dailyTheme.acceptThreshold * 100) : 
+                   (settings?.minThemeMatchScore ?? 
+                   (settings?.acceptThreshold ? Math.round(settings.acceptThreshold * 100) : 
+                   DEFAULT_THRESHOLDS.minThemeMatch))),
+    minQuality: dailyTheme.minQualityScore ?? (settings?.minQualityScore ?? DEFAULT_THRESHOLDS.minQuality),
+    minEffort: dailyTheme.minEffortScore ?? (settings?.minEffortScore ?? DEFAULT_THRESHOLDS.minEffort),
+    maxSimplicity: dailyTheme.maxSimplicityScore ?? (settings?.maxSimplicityScore ?? DEFAULT_THRESHOLDS.maxSimplicity),
+    maxSpam: dailyTheme.maxSpamScore ?? (settings?.maxSpamScore ?? DEFAULT_THRESHOLDS.maxSpam),
   };
-
-  // If settings exist, let's map rawMin/rawMax or custom fields if relevant
-  if (settings) {
-    if (settings.acceptThreshold) {
-      thresholds.minThemeMatch = Math.round(settings.acceptThreshold * 100);
-    }
-  }
 
   let scores: ThemeValidationScores;
   let rawResponseJson: any = null;
